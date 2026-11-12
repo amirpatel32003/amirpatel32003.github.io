@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#15161a">
+<title>Marketing Automation Platform - Amir Patel</title>
+<meta name="description" content="A visual walkthrough of an enterprise marketing automation platform: Flask REST APIs over SQL Server, customer segmentation, and campaign-ready datasets. Animated slides, video, and a PDF download.">
+<meta property="og:title" content="Enterprise Marketing Automation Platform - Amir Patel">
+<meta property="og:description" content="How data moves from raw sources to campaign-ready lists. Animated slides, video, and PDF.">
+<meta property="og:type" content="article">
+<meta property="og:image" content="poster.jpg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    color-scheme:dark;
+    --graphite:#15161a;
+    --panel:#1d1e22;
+    --panel-2:#25262b;
+    --line:#3c3d43;
+    --ink:#f6f4ef;
+    --muted:#b7b3aa;
+    --amber:#e2793f;
+    --amber-bright:#f0925e;
+    --teal:#7fd8c3;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  [hidden]{ display:none !important; }
+  html{ scroll-behavior:smooth; background:var(--graphite); }
+  body{
+    background:var(--graphite);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{ font-family:'Space Grotesk', sans-serif; font-weight:600; letter-spacing:-0.01em; }
+  a{ color:inherit; }
+  :focus-visible{ outline:2px solid var(--amber); outline-offset:3px; }
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.72rem;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--amber);
+    display:flex;
+    align-items:center;
+    gap:0.6rem;
+  }
+  .eyebrow::before{ content:''; width:6px; height:6px; background:var(--amber); border-radius:1px; flex-shrink:0; }
+
+  nav{
+    position:sticky; top:0;
+    display:flex; justify-content:space-between; align-items:center;
+    padding:1.1rem 2rem;
+    background:rgba(21,22,26,0.97);
+    border-bottom:1px solid var(--line);
+    z-index:100;
+  }
+  nav .logo{ font-family:'IBM Plex Mono', monospace; font-size:0.85rem; letter-spacing:0.05em; color:var(--ink); text-decoration:none; }
+  nav .logo span{ color:var(--amber); }
+  nav ul{ list-style:none; display:flex; gap:1.8rem; }
+  nav ul a{
+    font-family:'IBM Plex Mono', monospace; font-size:0.72rem; letter-spacing:0.08em;
+    text-transform:uppercase; text-decoration:none; color:var(--muted); transition:color 0.2s;
+  }
+  nav ul a:hover{ color:var(--amber-bright); }
+  @media (max-width:700px){ nav{ padding:1rem 1.2rem; } nav ul li:not(:first-child){ display:none; } }
+
+  .page{ max-width:1100px; margin:0 auto; padding:4.5rem 2rem 3rem; }
+  @media (max-width:700px){ .page{ padding:3rem 1.2rem 2rem; } }
+  .page h1{ font-size:clamp(2rem,5.5vw,3.2rem); line-height:1.1; margin:1rem 0 1.2rem; max-width:16em; }
+  .lede{ color:var(--muted); font-size:1.05rem; max-width:40em; margin-bottom:1.4rem; }
+  .stack{ display:flex; flex-wrap:wrap; gap:0.4rem; }
+  .chip{
+    font-family:'IBM Plex Mono',monospace; font-size:0.66rem; color:var(--teal);
+    border:1px solid rgba(79,209,197,0.3); padding:0.2rem 0.5rem; border-radius:2px;
+  }
+  .actions{ display:flex; flex-wrap:wrap; gap:1rem; margin:2rem 0 4rem; }
+  .btn{
+    font-family:'IBM Plex Mono', monospace; font-size:0.78rem; letter-spacing:0.06em; text-transform:uppercase;
+    text-decoration:none; padding:0.85rem 1.5rem; border-radius:2px; display:inline-flex; align-items:center; gap:0.5rem;
+    cursor:pointer; background:none; color:var(--ink);
+    transition:transform 0.15s, background 0.15s, border-color 0.15s;
+  }
+  .btn-primary{ background:var(--amber); color:var(--graphite); font-weight:600; border:1px solid var(--amber); }
+  .btn-primary:hover{ background:var(--amber-bright); transform:translateY(-1px); }
+  .btn-ghost{ border:1px solid var(--line); }
+  .btn-ghost:hover{ border-color:var(--teal); color:var(--teal); }
+
+  .grid{ display:grid; gap:3.5rem; grid-template-areas:"viewer" "stages"; }
+  .viewer{ grid-area:viewer; }
+  .stages{ grid-area:stages; }
+  @media (min-width:900px){ .grid{ grid-template-columns:1fr 520px; grid-template-areas:"stages viewer"; align-items:start; gap:4rem; } }
+  .grid h2{ font-size:1.5rem; margin:0.7rem 0 0.6rem; }
+  .note{ color:var(--muted); font-size:0.92rem; max-width:34em; margin-bottom:1.2rem; }
+
+  .tabs{ display:flex; gap:0.6rem; margin-bottom:1rem; }
+  .tabs button{
+    font-family:'IBM Plex Mono',monospace; font-size:0.72rem; letter-spacing:0.06em; text-transform:uppercase;
+    color:var(--muted); background:none; border:1px solid var(--line); border-radius:2px;
+    padding:0.6rem 1rem; min-height:42px; cursor:pointer; transition:border-color 0.15s, color 0.15s;
+  }
+  .tabs button:hover{ border-color:var(--teal); color:var(--teal); }
+  .tabs button[aria-selected="true"]{ background:var(--amber); border-color:var(--amber); color:var(--graphite); font-weight:500; }
+  .deckbox{ container-type:inline-size; width:100%; max-width:520px; }
+  .deckbox iframe{
+    display:block; width:100%; aspect-ratio:520/714; height:calc(100cqw * 1.25 + 64px);
+    border:1px solid var(--line); border-radius:4px; background:var(--graphite);
+  }
+  video{ display:block; width:100%; max-width:520px; aspect-ratio:4/5; background:var(--graphite); border:1px solid var(--line); border-radius:4px; }
+
+  ol.st{ list-style:none; margin-top:1.8rem; border-left:1px solid var(--line); }
+  ol.st li{ position:relative; padding:0 0 1.9rem 1.8rem; }
+  ol.st li::before{
+    content:''; position:absolute; left:-5px; top:0.5rem; width:9px; height:9px;
+    background:var(--graphite); border:2px solid var(--amber); border-radius:50%;
+  }
+  ol.st h3{ font-size:1.1rem; margin-bottom:0.3rem; }
+  ol.st p{ color:var(--muted); font-size:0.92rem; max-width:32em; margin-bottom:0.6rem; }
+  .dl{ margin-top:0.5rem; padding:1.4rem; background:var(--panel); border:1px solid var(--line); border-radius:4px; }
+  .dl p{ color:var(--muted); font-size:0.9rem; margin-bottom:1rem; }
+
+  footer{
+    max-width:1100px; margin:0 auto; padding:1.6rem 2rem 3rem; border-top:1px solid var(--line);
+    display:flex; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;
+    font-family:'IBM Plex Mono',monospace; font-size:0.72rem; color:var(--muted);
+  }
+  footer a{ text-decoration:none; }
+  footer a:hover{ color:var(--amber-bright); }
+  @media (prefers-reduced-motion: reduce){ html{ scroll-behavior:auto; } .btn{ transition:none; } }
+</style>
+</head>
+<body>
+<nav>
+  <a class="logo" href="../../">AMIR<span>.</span>PATEL</a>
+  <ul>
+    <li><a href="../../">Portfolio</a></li>
+    <li><a href="../../#experience">Experience</a></li>
+    <li><a href="../../#contact">Contact</a></li>
+  </ul>
+</nav>
+
+<main class="page">
+  <p class="eyebrow">Experience - Marketing / Automation</p>
+  <h1>Enterprise Marketing Automation Platform</h1>
+  <p class="lede">Flask REST APIs over SQL Server, customer segmentation using credit-bureau characteristics and business rules, generating campaign-ready datasets. Cut a multi-day manual process down to minutes for ~20 marketing users.</p>
+  <div class="stack" aria-label="Technologies"><span class="chip">Python</span><span class="chip">Flask</span><span class="chip">SQL Server</span></div>
+
+  <div class="actions">
+    <a class="btn btn-primary" href="marketing-automation-carousel.pdf" download>Download PDF</a>
+    <button class="btn btn-ghost" type="button" id="watch">Watch the video (1:19)</button>
+    <a class="btn btn-ghost" href="deck.html" target="_blank" rel="noopener">Open slides full screen</a>
+  </div>
+
+  <div class="grid">
+    <section class="viewer" id="viewer" aria-labelledby="wt">
+      <p class="eyebrow">Walkthrough</p>
+      <h2 id="wt">See how the data flows</h2>
+      <p class="note">A 79-second narrated walkthrough, stage by stage. Captions are on, so it works with the sound off too. It's kept generic on purpose, so it shows the design without client specifics.</p>
+      <div class="tabs" role="tablist" aria-label="Walkthrough format">
+        <button type="button" role="tab" id="t-video" data-tab="video" aria-selected="true" aria-controls="p-video">Narrated video</button>
+        <button type="button" role="tab" id="t-slides" data-tab="slides" aria-selected="false" aria-controls="p-slides">Animated slides</button>
+      </div>
+      <div id="p-video" role="tabpanel" aria-labelledby="t-video">
+        <video controls playsinline preload="metadata" poster="poster.jpg"><source src="marketing-automation-walkthrough.mp4" type="video/mp4">Your browser can't play this video. Use the PDF download instead.</video>
+      </div>
+      <div id="p-slides" role="tabpanel" aria-labelledby="t-slides" class="deckbox" hidden>
+        <iframe src="deck.html" title="Animated walkthrough of the marketing automation pipeline" loading="lazy"></iframe>
+      </div>
+    </section>
+
+    <section class="stages" aria-labelledby="st">
+      <p class="eyebrow">Breakdown</p>
+      <h2 id="st">The five stages</h2>
+      <ol class="st">
+        <li><h3>Ingest and validate</h3><p>Pulls records from internal and external sources, removes duplicates, and loads clean rows into a database.</p><div class="stack"><span class="chip">Python</span><span class="chip">SQL Server</span></div></li>
+        <li><h3>Clean and standardize</h3><p>A reusable Python function library fixes emails, phone numbers, and addresses so every record follows one format.</p><div class="stack"><span class="chip">Python</span><span class="chip">pandas</span></div></li>
+        <li><h3>Compliance first</h3><p>Suppression and consent rules run before any list exists, so people who shouldn't be contacted are removed up front.</p><div class="stack"><span class="chip">Python</span><span class="chip">SQL Server</span></div></li>
+        <li><h3>Segment by rules</h3><p>Each campaign type has its own rule set. The engine sorts customers into the right audiences.</p><div class="stack"><span class="chip">Python</span><span class="chip">SQL Server</span></div></li>
+        <li><h3>Serve through an API</h3><p>A REST API drives the platform. Campaigns run daily, weekly, or monthly and produce datasets ready for each channel.</p><div class="stack"><span class="chip">Flask</span><span class="chip">REST API</span></div></li>
+      </ol>
+      <div class="dl">
+        <p>Want to keep it? The 10-slide PDF has the full breakdown.</p>
+        <a class="btn btn-primary" href="marketing-automation-carousel.pdf" download>Download PDF</a>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer>
+  <span>&copy; 2026 Amir Patel</span>
+  <a href="../ai-call-evaluation/">AI Call Evaluation walkthrough &rarr;</a>
+  <a href="../../">Back to portfolio</a>
+</footer>
+
+<script>
+(function(){
+  var tabs=[].slice.call(document.querySelectorAll('[role=tab]')), video=document.querySelector('video');
+  function show(name){
+    tabs.forEach(function(t){
+      var on=t.getAttribute('data-tab')===name;
+      t.setAttribute('aria-selected', on?'true':'false');
+      document.getElementById('p-'+t.getAttribute('data-tab')).hidden=!on;
+    });
+    if(name!=='video' && video){ video.pause(); }
+  }
+  tabs.forEach(function(t){ t.addEventListener('click', function(){ show(t.getAttribute('data-tab')); }); });
+  document.getElementById('watch').addEventListener('click', function(){
+    show('video');
+    document.getElementById('viewer').scrollIntoView({behavior:'smooth', block:'start'});
+    if(video){ var p=video.play(); if(p && p.catch){ p.catch(function(){}); } }
+  });
+})();
+</script>
+</body>
+</html>

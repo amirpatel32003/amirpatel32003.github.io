@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#15161a">
+<title>TTC Subway Delay Pipeline - Amir Patel</title>
+<meta name="description" content="Case study: a tested DuckDB pipeline on Toronto Open Data TTC subway delay files, with a live dashboard rebuilt daily.">
+<meta property="og:title" content="TTC Subway Delay Pipeline - Amir Patel">
+<meta property="og:description" content="Bronze, Silver, Gold, 43 tests, CI and a daily-rebuilt public dashboard.">
+<meta property="og:type" content="article">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    color-scheme:dark;
+    --graphite:#15161a;
+    --panel:#1d1e22;
+    --panel-2:#25262b;
+    --line:#3c3d43;
+    --ink:#f6f4ef;
+    --muted:#b7b3aa;
+    --amber:#e2793f;
+    --amber-bright:#f0925e;
+    --teal:#7fd8c3;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  [hidden]{ display:none !important; }
+  html{ scroll-behavior:smooth; background:var(--graphite); }
+  body{
+    background:var(--graphite);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{ font-family:'Space Grotesk', sans-serif; font-weight:600; letter-spacing:-0.01em; }
+  a{ color:inherit; }
+  :focus-visible{ outline:2px solid var(--amber); outline-offset:3px; }
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.72rem;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--amber);
+    display:flex;
+    align-items:center;
+    gap:0.6rem;
+  }
+  .eyebrow::before{ content:''; width:6px; height:6px; background:var(--amber); border-radius:1px; flex-shrink:0; }
+
+  nav{
+    position:sticky; top:0;
+    display:flex; justify-content:space-between; align-items:center;
+    padding:1.1rem 2rem;
+    background:rgba(21,22,26,0.97);
+    border-bottom:1px solid var(--line);
+    z-index:100;
+  }
+  nav .logo{ font-family:'IBM Plex Mono', monospace; font-size:0.85rem; letter-spacing:0.05em; color:var(--ink); text-decoration:none; }
+  nav .logo span{ color:var(--amber); }
+  nav ul{ list-style:none; display:flex; gap:1.8rem; }
+  nav ul a{
+    font-family:'IBM Plex Mono', monospace; font-size:0.72rem; letter-spacing:0.08em;
+    text-transform:uppercase; text-decoration:none; color:var(--muted); transition:color 0.2s;
+  }
+  nav ul a:hover{ color:var(--amber-bright); }
+  @media (max-width:700px){ nav{ padding:1rem 1.2rem; } nav ul li:not(:first-child){ display:none; } }
+
+  .page{ max-width:1100px; margin:0 auto; padding:4.5rem 2rem 3rem; }
+  @media (max-width:700px){ .page{ padding:3rem 1.2rem 2rem; } }
+  .page h1{ font-size:clamp(2rem,5.5vw,3.2rem); line-height:1.1; margin:1rem 0 1.2rem; max-width:16em; }
+  .lede{ color:var(--muted); font-size:1.05rem; max-width:40em; margin-bottom:1.4rem; }
+  .stack{ display:flex; flex-wrap:wrap; gap:0.4rem; }
+  .chip{
+    font-family:'IBM Plex Mono',monospace; font-size:0.66rem; color:var(--teal);
+    border:1px solid rgba(79,209,197,0.3); padding:0.2rem 0.5rem; border-radius:2px;
+  }
+  .actions{ display:flex; flex-wrap:wrap; gap:1rem; margin:2rem 0 4rem; }
+  .btn{
+    font-family:'IBM Plex Mono', monospace; font-size:0.78rem; letter-spacing:0.06em; text-transform:uppercase;
+    text-decoration:none; padding:0.85rem 1.5rem; border-radius:2px; display:inline-flex; align-items:center; gap:0.5rem;
+    cursor:pointer; background:none; color:var(--ink);
+    transition:transform 0.15s, background 0.15s, border-color 0.15s;
+  }
+  .btn-primary{ background:var(--amber); color:var(--graphite); font-weight:600; border:1px solid var(--amber); }
+  .btn-primary:hover{ background:var(--amber-bright); transform:translateY(-1px); }
+  .btn-ghost{ border:1px solid var(--line); }
+  .btn-ghost:hover{ border-color:var(--teal); color:var(--teal); }
+
+  .grid{ display:grid; gap:3.5rem; grid-template-areas:"viewer" "stages"; }
+  .viewer{ grid-area:viewer; }
+  .stages{ grid-area:stages; }
+  @media (min-width:900px){ .grid{ grid-template-columns:1fr 520px; grid-template-areas:"stages viewer"; align-items:start; gap:4rem; } }
+  .grid h2{ font-size:1.5rem; margin:0.7rem 0 0.6rem; }
+  .note{ color:var(--muted); font-size:0.92rem; max-width:34em; margin-bottom:1.2rem; }
+
+  .tabs{ display:flex; gap:0.6rem; margin-bottom:1rem; }
+  .tabs button{
+    font-family:'IBM Plex Mono',monospace; font-size:0.72rem; letter-spacing:0.06em; text-transform:uppercase;
+    color:var(--muted); background:none; border:1px solid var(--line); border-radius:2px;
+    padding:0.6rem 1rem; min-height:42px; cursor:pointer; transition:border-color 0.15s, color 0.15s;
+  }
+  .tabs button:hover{ border-color:var(--teal); color:var(--teal); }
+  .tabs button[aria-selected="true"]{ background:var(--amber); border-color:var(--amber); color:var(--graphite); font-weight:500; }
+  .deckbox{ container-type:inline-size; width:100%; max-width:520px; }
+  .deckbox iframe{
+    display:block; width:100%; aspect-ratio:520/714; height:calc(100cqw * 1.25 + 64px);
+    border:1px solid var(--line); border-radius:4px; background:var(--graphite);
+  }
+  video{ display:block; width:100%; max-width:520px; aspect-ratio:4/5; background:var(--graphite); border:1px solid var(--line); border-radius:4px; }
+
+  ol.st{ list-style:none; margin-top:1.8rem; border-left:1px solid var(--line); }
+  ol.st li{ position:relative; padding:0 0 1.9rem 1.8rem; }
+  ol.st li::before{
+    content:''; position:absolute; left:-5px; top:0.5rem; width:9px; height:9px;
+    background:var(--graphite); border:2px solid var(--amber); border-radius:50%;
+  }
+  ol.st h3{ font-size:1.1rem; margin-bottom:0.3rem; }
+  ol.st p{ color:var(--muted); font-size:0.92rem; max-width:32em; margin-bottom:0.6rem; }
+  .dl{ margin-top:0.5rem; padding:1.4rem; background:var(--panel); border:1px solid var(--line); border-radius:4px; }
+  .dl p{ color:var(--muted); font-size:0.9rem; margin-bottom:1rem; }
+
+  footer{
+    max-width:1100px; margin:0 auto; padding:1.6rem 2rem 3rem; border-top:1px solid var(--line);
+    display:flex; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;
+    font-family:'IBM Plex Mono',monospace; font-size:0.72rem; color:var(--muted);
+  }
+  footer a{ text-decoration:none; }
+  footer a:hover{ color:var(--amber-bright); }
+  @media (prefers-reduced-motion: reduce){ html{ scroll-behavior:auto; } .btn{ transition:none; } }
+  .frame{display:block;width:100%;height:760px;border:1px solid var(--line);border-radius:4px;background:var(--graphite)}
+  .full{margin:0 0 4rem}.full h2{font-size:1.5rem;margin:.7rem 0 .6rem}
+  .kp{display:flex;flex-wrap:wrap;gap:1.8rem;margin:1.2rem 0 2rem}.kp div{font-family:'IBM Plex Mono',monospace;font-size:.75rem;color:var(--muted)}.kp strong{display:block;font-family:'Space Grotesk',sans-serif;font-size:1.7rem;color:var(--ink)}
+  table.t{border-collapse:collapse;width:100%;font-size:.88rem;color:var(--muted)}table.t td,table.t th{border-bottom:1px solid var(--line);padding:.6rem .5rem;text-align:left;vertical-align:top}table.t th{font-family:'IBM Plex Mono',monospace;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--teal)}
+  ul.f{margin-left:1.2rem;color:var(--muted);font-size:.93rem;max-width:46em}ul.f li{margin-bottom:.6rem}
+</style>
+</head>
+<body>
+<nav>
+  <a class="logo" href="../../">AMIR<span>.</span>PATEL</a>
+  <ul>
+    <li><a href="../../">Portfolio</a></li>
+    <li><a href="../../#projects">Projects</a></li>
+    <li><a href="../../#contact">Contact</a></li>
+  </ul>
+</nav>
+<main class="page">
+  <p class="eyebrow">Personal project - Data engineering</p>
+  <h1>TTC Subway Delay Pipeline and Dashboard</h1>
+  <p class="lede">A tested pipeline on the City of Toronto's TTC subway delay files. It cleans and models the data in DuckDB SQL, checks quality automatically, and publishes a dashboard that rebuilds every day from the latest open data.</p>
+  <div class="stack"><span class="chip">Python</span><span class="chip">DuckDB</span><span class="chip">SQL</span><span class="chip">pandas</span><span class="chip">PyArrow</span><span class="chip">pytest</span><span class="chip">GitHub Actions</span><span class="chip">Airflow DAG</span><span class="chip">d3</span></div>
+  <div class="actions">
+    <a class="btn btn-primary" href="https://amirpatel32003.github.io/ttc-delay-pipeline/" target="_blank" rel="noopener">Open live dashboard</a>
+    <a class="btn btn-ghost" href="https://github.com/amirpatel32003/ttc-delay-pipeline" target="_blank" rel="noopener">GitHub repo</a>
+    <a class="btn btn-ghost" href="https://github.com/amirpatel32003/ttc-delay-pipeline/blob/main/docs/data_contract.md" target="_blank" rel="noopener">Data contract</a>
+  </div>
+  <div class="kp"><div><strong>270,282</strong>source rows</div><div><strong>10</strong>files loaded</div><div><strong>275</strong>duplicates removed</div><div><strong>920</strong>stations ranked</div><div><strong>9</strong>quality checks</div><div><strong>43</strong>tests</div><div><strong>~17 s</strong>first full load</div></div>
+
+  <section class="full" aria-labelledby="live">
+    <p class="eyebrow">Live</p>
+    <h2 id="live">The dashboard, embedded</h2>
+    <p class="note">This is the real page, served from GitHub Pages. If it does not load here, use the button above.</p>
+    <iframe class="frame" src="https://amirpatel32003.github.io/ttc-delay-pipeline/" title="TTC subway delay dashboard" loading="lazy"></iframe>
+  </section>
+
+  <section class="full" aria-labelledby="arch">
+    <p class="eyebrow">Architecture</p>
+    <h2 id="arch">Bronze, Silver, Gold</h2>
+    <table class="t">
+      <tr><th>Layer</th><th>What happens</th></tr>
+      <tr><td>Bronze</td><td>Files are downloaded as published, kept as text, and tagged with source and ingest time.</td></tr>
+      <tr><td>Silver</td><td>Types are cast, station and line names standardized, duplicates dropped, and bad rows sent to a rejects table with a reason.</td></tr>
+      <tr><td>Gold</td><td>Business-ready tables: daily summary, station ranking, hourly pattern, monthly trend and cause breakdown.</td></tr>
+      <tr><td>Quality</td><td>9 automated checks covering nulls, ranges, duplicates, reject rate, unknown-line rate and gold-to-silver reconciliation.</td></tr>
+      <tr><td>Ledger</td><td>One row per source file with its last-modified time and SHA-256, so unchanged files are skipped on the next run.</td></tr>
+    </table>
+  </section>
+
+  <section class="full" aria-labelledby="learn">
+    <p class="eyebrow">What the real data taught me</p>
+    <h2 id="learn">Each problem became a fix and a test</h2>
+    <ul class="f">
+      <li>The portal publishes the "since 2025" data four times. The ingest keeps one copy per dataset and prefers CSV.</li>
+      <li>The line column has many spellings and a few junk values. They collapse to a small set of clean codes, and blank or other stays under 0.4% of rows.</li>
+      <li>Station names are truncated and carry line qualifiers. About 13,400 rows name a track segment or a whole line, so they are flagged and left out of station rankings.</li>
+      <li>The 2017 to 2021 files are Excel workbooks with one sheet per month. My first loader read only the first sheet, so the warehouse looked as if the City had published almost nothing. The dashboard exposed it.</li>
+      <li>About two thirds of rows have zero delay minutes, so averages are reported next to incident counts.</li>
+    </ul>
+  </section>
+</main>
+<footer>
+  <span>&copy; 2026 Amir Patel</span>
+  <a href="../marketing-automation/">Marketing Automation walkthrough &rarr;</a>
+  <a href="../../">Back to portfolio</a>
+</footer>
+</body>
+</html>
