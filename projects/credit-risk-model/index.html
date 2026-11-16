@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#15161a">
+<title>Mortgage Default Risk Model - Amir Patel</title>
+<meta name="description" content="Case study: a DuckDB pipeline that builds 737 variables from 26.6 million Fannie Mae loan records, seven models compared on a time-based split, and 35 logged trials on what improves the model.">
+<meta property="og:title" content="Mortgage Default Risk Model - Amir Patel">
+<meta property="og:description" content="737 variables, seven models, a time-based split and 35 logged trials.">
+<meta property="og:type" content="article">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    color-scheme:dark;
+    --graphite:#15161a;
+    --panel:#1d1e22;
+    --panel-2:#25262b;
+    --line:#3c3d43;
+    --ink:#f6f4ef;
+    --muted:#b7b3aa;
+    --amber:#e2793f;
+    --amber-bright:#f0925e;
+    --teal:#7fd8c3;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  [hidden]{ display:none !important; }
+  html{ scroll-behavior:smooth; background:var(--graphite); }
+  body{
+    background:var(--graphite);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{ font-family:'Space Grotesk', sans-serif; font-weight:600; letter-spacing:-0.01em; }
+  a{ color:inherit; }
+  :focus-visible{ outline:2px solid var(--amber); outline-offset:3px; }
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.72rem;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--amber);
+    display:flex;
+    align-items:center;
+    gap:0.6rem;
+  }
+  .eyebrow::before{ content:''; width:6px; height:6px; background:var(--amber); border-radius:1px; flex-shrink:0; }
+
+  nav{
+    position:sticky; top:0;
+    display:flex; justify-content:space-between; align-items:center;
+    padding:1.1rem 2rem;
+    background:rgba(21,22,26,0.97);
+    border-bottom:1px solid var(--line);
+    z-index:100;
+  }
+  nav .logo{ font-family:'IBM Plex Mono', monospace; font-size:0.85rem; letter-spacing:0.05em; color:var(--ink); text-decoration:none; }
+  nav .logo span{ color:var(--amber); }
+  nav ul{ list-style:none; display:flex; gap:1.8rem; }
+  nav ul a{
+    font-family:'IBM Plex Mono', monospace; font-size:0.72rem; letter-spacing:0.08em;
+    text-transform:uppercase; text-decoration:none; color:var(--muted); transition:color 0.2s;
+  }
+  nav ul a:hover{ color:var(--amber-bright); }
+  @media (max-width:700px){ nav{ padding:1rem 1.2rem; } nav ul li:not(:first-child){ display:none; } }
+
+  .page{ max-width:1100px; margin:0 auto; padding:4.5rem 2rem 3rem; }
+  @media (max-width:700px){ .page{ padding:3rem 1.2rem 2rem; } }
+  .page h1{ font-size:clamp(2rem,5.5vw,3.2rem); line-height:1.1; margin:1rem 0 1.2rem; max-width:16em; }
+  .lede{ color:var(--muted); font-size:1.05rem; max-width:40em; margin-bottom:1.4rem; }
+  .stack{ display:flex; flex-wrap:wrap; gap:0.4rem; }
+  .chip{
+    font-family:'IBM Plex Mono',monospace; font-size:0.66rem; color:var(--teal);
+    border:1px solid rgba(79,209,197,0.3); padding:0.2rem 0.5rem; border-radius:2px;
+  }
+  .actions{ display:flex; flex-wrap:wrap; gap:1rem; margin:2rem 0 4rem; }
+  .btn{
+    font-family:'IBM Plex Mono', monospace; font-size:0.78rem; letter-spacing:0.06em; text-transform:uppercase;
+    text-decoration:none; padding:0.85rem 1.5rem; border-radius:2px; display:inline-flex; align-items:center; gap:0.5rem;
+    cursor:pointer; background:none; color:var(--ink);
+    transition:transform 0.15s, background 0.15s, border-color 0.15s;
+  }
+  .btn-primary{ background:var(--amber); color:var(--graphite); font-weight:600; border:1px solid var(--amber); }
+  .btn-primary:hover{ background:var(--amber-bright); transform:translateY(-1px); }
+  .btn-ghost{ border:1px solid var(--line); }
+  .btn-ghost:hover{ border-color:var(--teal); color:var(--teal); }
+
+  .grid{ display:grid; gap:3.5rem; grid-template-areas:"viewer" "stages"; }
+  .viewer{ grid-area:viewer; }
+  .stages{ grid-area:stages; }
+  @media (min-width:900px){ .grid{ grid-template-columns:1fr 520px; grid-template-areas:"stages viewer"; align-items:start; gap:4rem; } }
+  .grid h2{ font-size:1.5rem; margin:0.7rem 0 0.6rem; }
+  .note{ color:var(--muted); font-size:0.92rem; max-width:34em; margin-bottom:1.2rem; }
+
+  .tabs{ display:flex; gap:0.6rem; margin-bottom:1rem; }
+  .tabs button{
+    font-family:'IBM Plex Mono',monospace; font-size:0.72rem; letter-spacing:0.06em; text-transform:uppercase;
+    color:var(--muted); background:none; border:1px solid var(--line); border-radius:2px;
+    padding:0.6rem 1rem; min-height:42px; cursor:pointer; transition:border-color 0.15s, color 0.15s;
+  }
+  .tabs button:hover{ border-color:var(--teal); color:var(--teal); }
+  .tabs button[aria-selected="true"]{ background:var(--amber); border-color:var(--amber); color:var(--graphite); font-weight:500; }
+  .deckbox{ container-type:inline-size; width:100%; max-width:520px; }
+  .deckbox iframe{
+    display:block; width:100%; aspect-ratio:520/714; height:calc(100cqw * 1.25 + 64px);
+    border:1px solid var(--line); border-radius:4px; background:var(--graphite);
+  }
+  video{ display:block; width:100%; max-width:520px; aspect-ratio:4/5; background:var(--graphite); border:1px solid var(--line); border-radius:4px; }
+
+  ol.st{ list-style:none; margin-top:1.8rem; border-left:1px solid var(--line); }
+  ol.st li{ position:relative; padding:0 0 1.9rem 1.8rem; }
+  ol.st li::before{
+    content:''; position:absolute; left:-5px; top:0.5rem; width:9px; height:9px;
+    background:var(--graphite); border:2px solid var(--amber); border-radius:50%;
+  }
+  ol.st h3{ font-size:1.1rem; margin-bottom:0.3rem; }
+  ol.st p{ color:var(--muted); font-size:0.92rem; max-width:32em; margin-bottom:0.6rem; }
+  .dl{ margin-top:0.5rem; padding:1.4rem; background:var(--panel); border:1px solid var(--line); border-radius:4px; }
+  .dl p{ color:var(--muted); font-size:0.9rem; margin-bottom:1rem; }
+
+  footer{
+    max-width:1100px; margin:0 auto; padding:1.6rem 2rem 3rem; border-top:1px solid var(--line);
+    display:flex; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;
+    font-family:'IBM Plex Mono',monospace; font-size:0.72rem; color:var(--muted);
+  }
+  footer a{ text-decoration:none; }
+  footer a:hover{ color:var(--amber-bright); }
+  @media (prefers-reduced-motion: reduce){ html{ scroll-behavior:auto; } .btn{ transition:none; } }
+  .frame{display:block;width:100%;height:760px;border:1px solid var(--line);border-radius:4px;background:var(--graphite)}
+  .full{margin:0 0 4rem}.full h2{font-size:1.5rem;margin:.7rem 0 .6rem}
+  .kp{display:flex;flex-wrap:wrap;gap:1.8rem;margin:1.2rem 0 2rem}.kp div{font-family:'IBM Plex Mono',monospace;font-size:.75rem;color:var(--muted)}.kp strong{display:block;font-family:'Space Grotesk',sans-serif;font-size:1.7rem;color:var(--ink)}
+  table.t{border-collapse:collapse;width:100%;font-size:.88rem;color:var(--muted)}table.t td,table.t th{border-bottom:1px solid var(--line);padding:.6rem .5rem;text-align:left;vertical-align:top}table.t th{font-family:'IBM Plex Mono',monospace;font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--teal)}
+  ul.f{margin-left:1.2rem;color:var(--muted);font-size:.93rem;max-width:46em}ul.f li{margin-bottom:.6rem}
+</style>
+</head>
+<body>
+<nav>
+  <a class="logo" href="../../">AMIR<span>.</span>PATEL</a>
+  <ul>
+    <li><a href="../../">Portfolio</a></li>
+    <li><a href="../../#projects">Projects</a></li>
+    <li><a href="../../#contact">Contact</a></li>
+  </ul>
+</nav>
+<main class="page">
+  <p class="eyebrow">Personal project - Credit risk and data engineering</p>
+  <h1>Mortgage Default Risk: Pipeline and Model Lab</h1>
+  <p class="lede">Predicts which Fannie Mae mortgages reach 90+ days past due within the next 12 months. A DuckDB pipeline builds 737 variables from 26.6 million monthly loan records, seven models are compared on a time-based split, and a second repo logs 35 trials to see what actually improves the model.</p>
+  <div class="stack"><span class="chip">Python</span><span class="chip">DuckDB</span><span class="chip">SQL window functions</span><span class="chip">PyArrow</span><span class="chip">Parquet</span><span class="chip">LightGBM</span><span class="chip">XGBoost</span><span class="chip">scikit-learn</span><span class="chip">SHAP</span><span class="chip">pytest</span></div>
+  <div class="actions">
+    <a class="btn btn-primary" href="https://amirpatel32003.github.io/credit-risk-pipeline/" target="_blank" rel="noopener">Pipeline results</a>
+    <a class="btn btn-primary" href="https://amirpatel32003.github.io/credit-model-lab/" target="_blank" rel="noopener">Model lab results</a>
+    <a class="btn btn-ghost" href="https://github.com/amirpatel32003/credit-risk-pipeline" target="_blank" rel="noopener">Pipeline repo</a>
+    <a class="btn btn-ghost" href="https://github.com/amirpatel32003/credit-model-lab" target="_blank" rel="noopener">Model lab repo</a>
+  </div>
+  <div class="kp"><div><strong>26.6M</strong>monthly loan records</div><div><strong>940,168</strong>modelled observations</div><div><strong>737</strong>variables</div><div><strong>7</strong>models compared</div><div><strong>35</strong>logged trials</div><div><strong>0.930</strong>test AUC, best model</div></div>
+
+  <section class="full" aria-labelledby="p1">
+    <p class="eyebrow">Part 1</p>
+    <h2 id="p1">The pipeline and the seven-model comparison</h2>
+    <p class="note">The real results page, served from GitHub Pages. If it does not load here, use the buttons above.</p>
+    <iframe class="frame" src="https://amirpatel32003.github.io/credit-risk-pipeline/" title="Mortgage default risk results" loading="lazy"></iframe>
+  </section>
+
+  <section class="full" aria-labelledby="arch">
+    <p class="eyebrow">Architecture</p>
+    <h2 id="arch">Bronze, Silver, Gold, then models</h2>
+    <table class="t">
+      <tr><th>Step</th><th>What happens</th></tr>
+      <tr><td>Bronze</td><td>A quarterly Fannie Mae file is streamed straight from its zip into Parquet. All 114 columns stay as text.</td></tr>
+      <tr><td>Silver</td><td>Columns are typed. An unknown delinquency status becomes NULL instead of a made-up number.</td></tr>
+      <tr><td>Gold</td><td>One row per loan and observation month. 737 variables from SQL window functions, plus a label for 90+ days late in the next 12 months.</td></tr>
+      <tr><td>Models</td><td>An 18-variable scorecard, logistic regression, decision tree, random forest, XGBoost, LightGBM and a neural network, all on one split.</td></tr>
+      <tr><td>Evaluation</td><td>AUC, KS, lift, calibration, SHAP, population stability and a cost-based cut-off table.</td></tr>
+    </table>
+  </section>
+
+  <section class="full" aria-labelledby="p2">
+    <p class="eyebrow">Part 2</p>
+    <h2 id="p2">The model lab: what actually improves a model</h2>
+    <p class="note">35 logged trials, scored on validation only. The test period was scored once at the end.</p>
+    <iframe class="frame" src="https://amirpatel32003.github.io/credit-model-lab/" title="Credit model lab results" loading="lazy"></iframe>
+  </section>
+
+  <section class="full" aria-labelledby="learn">
+    <p class="eyebrow">What the real data taught me</p>
+    <h2 id="learn">Findings I did not expect</h2>
+    <ul class="f">
+      <li>Variables at month t read only rows at or before t, and the label reads only rows after t. Tests change later months and check that nothing moves.</li>
+      <li>The split is by calendar time with 12-month gaps, not a random 80/20. Each loan appears many times, so a random split would put the same loan in training and test.</li>
+      <li>Boosted models score about 0.92 AUC on the test period, but among borrowers with no late month in 24 months a simple scorecard ranks as well or better (0.761 against 0.741). Most of the headline gap comes from loans that are already late.</li>
+      <li>In the model lab, training on all training loans was the only change that beat seed noise (0.923 to 0.930 test AUC). Tuning, fewer variables and monotone constraints stayed within about 0.001.</li>
+      <li>Weighting defaults three times and isotonic calibration both made log loss worse, so I left them out.</li>
+      <li>The default rate fell from 3.6% in training to 1.8% in the test period, so any cut-off needs re-checking before real use.</li>
+      <li>The 2026 files have 114 columns but the public layout documents 110. The extra four are named and left unused.</li>
+    </ul>
+  </section>
+</main>
+<footer>
+  <span>&copy; 2026 Amir Patel</span>
+  <a href="../ttc-delay-pipeline/">TTC delay pipeline case study &rarr;</a>
+  <a href="../../">Back to portfolio</a>
+</footer>
+</body>
+</html>

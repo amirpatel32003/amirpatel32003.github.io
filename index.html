@@ -6,7 +6,7 @@
 <meta name="color-scheme" content="dark">
 <meta name="theme-color" content="#15161a">
 <title>Amir Patel | Data Analyst &amp; Data Engineer, Toronto</title>
-<meta name="description" content="Amir Patel is a Toronto data analyst and data engineer. SQL, Python, Databricks, Tableau and R Shiny. A live TTC delay dashboard, tested pipelines, and walkthroughs of real lending analytics work.">
+<meta name="description" content="Amir Patel is a Toronto data analyst and data engineer. SQL, Python, Databricks, Tableau and R Shiny. A live TTC delay dashboard, a mortgage default risk model on 26.6 million loan records, tested pipelines, and walkthroughs of real lending analytics work.">
 <link rel="canonical" href="https://amirpatel32003.github.io/">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <meta property="og:title" content="Amir Patel | Data Analyst &amp; Data Engineer">
@@ -247,11 +247,34 @@ footer a{text-decoration:none}footer a:hover{color:var(--ink)}
   <div class="wrap">
     <div class="head reveal">
       <div class="eyebrow">Featured case studies</div>
-      <h2>Three projects that show how I work</h2>
+      <h2>Four projects that show how I work</h2>
       <p>Each one starts with a real problem, shows what I built, and ends with a result. Open any case study for the full breakdown.</p>
     </div>
 
     <article class="case reveal">
+      <div class="case-body">
+        <span class="tag">Personal project &middot; built in public &middot; Fannie Mae data</span>
+        <h3>Mortgage Default Risk Model and Model Lab</h3>
+        <p>A pipeline that turns 26.6 million monthly mortgage records into 737 variables, seven models compared on a time-based split, and a second repo that logs every trial of improving the model.</p>
+        <dl class="pcs">
+          <div><span class="k">Problem</span><span>Default models are easy to make look good. A random split puts the same loan in training and test, and one headline AUC can hide how the model does on borrowers who are not already late.</span></div>
+          <div><span class="k">Built</span><span>Bronze, Silver and Gold layers in DuckDB SQL with window functions, a forward-looking 12-month label, purged time-based splits, seven models and a 35-trial log.</span></div>
+          <div><span class="k">Found</span><span>A simple 18-variable scorecard ranks borrowers with a clean 24-month history as well as the boosted models (0.761 against 0.741 AUC). More training data was the only change that beat noise, from 0.923 to 0.930 test AUC.</span></div>
+        </dl>
+        <div class="chips"><span class="chip">Python</span><span class="chip">DuckDB</span><span class="chip">SQL</span><span class="chip">LightGBM</span><span class="chip">XGBoost</span><span class="chip">SHAP</span><span class="chip">pytest</span></div>
+        <div class="row">
+          <a class="btn sm" href="projects/credit-risk-model/">Read the case study</a>
+          <a class="btn sm ghost" href="https://amirpatel32003.github.io/credit-model-lab/" target="_blank" rel="noopener">Model lab results</a>
+          <a class="btn sm ghost" href="https://github.com/amirpatel32003/credit-risk-pipeline" target="_blank" rel="noopener">GitHub repo</a>
+        </div>
+      </div>
+      <div class="visual"><div class="stats">
+        <div><b>26.6M</b><span>loan records</span></div><div><b>737</b><span>variables</span></div>
+        <div><b>7</b><span>models compared</span></div><div><b>0.930</b><span>test AUC</span></div>
+      </div></div>
+    </article>
+
+    <article class="case flip reveal">
       <div class="case-body">
         <span class="tag">Personal project &middot; built in public &middot; Toronto Open Data</span>
         <h3>TTC Subway Delay Pipeline and Dashboard</h3>
@@ -274,7 +297,7 @@ footer a{text-decoration:none}footer a:hover{color:var(--ink)}
       </div></div>
     </article>
 
-    <article class="case flip reveal">
+    <article class="case reveal">
       <div class="case-body">
         <span class="tag">AI &middot; Quality assurance &middot; Cash 4 You</span>
         <h3>AI Call Evaluation Platform</h3>
@@ -293,7 +316,7 @@ footer a{text-decoration:none}footer a:hover{color:var(--ink)}
       <div class="visual"><img class="poster" src="projects/ai-call-evaluation/poster.jpg" alt="Poster frame from the AI call evaluation walkthrough video" loading="lazy"></div>
     </article>
 
-    <article class="case reveal">
+    <article class="case flip reveal">
       <div class="case-body">
         <span class="tag">Marketing &middot; Automation &middot; Cash 4 You</span>
         <h3>Enterprise Marketing Automation Platform</h3>
@@ -339,6 +362,7 @@ footer a{text-decoration:none}footer a:hover{color:var(--ink)}
       <button class="on" data-f="all">All</button><button data-f="dash">Dashboards</button><button data-f="pipe">Pipelines</button><button data-f="ml">AI and ML</button><button data-f="risk">Risk and fraud</button>
     </div>
     <div class="grid reveal" id="grid">
+      <div class="card" data-t="ml pipe risk"><span class="tag">Personal project</span><h3>Mortgage Default Risk Model</h3><p>26.6 million Fannie Mae loan records turned into 737 variables with SQL window functions, seven models compared on a time-based split, and 35 logged trials on what improves the model.</p><div class="chips"><span class="chip">DuckDB</span><span class="chip">LightGBM</span><span class="chip">SHAP</span></div><a class="more" href="projects/credit-risk-model/">Read the case study</a></div>
       <div class="card" data-t="pipe"><span class="tag">Personal project</span><h3>Azure Data Pipeline</h3><p>ETL with Azure Data Factory ingesting into ADLS Gen2, PySpark transformations in Azure Databricks, and Delta Lake tables across Bronze, Silver and Gold layers.</p><div class="chips"><span class="chip">ADF</span><span class="chip">Databricks</span><span class="chip">PySpark</span><span class="chip">Delta Lake</span></div></div>
       <div class="card" data-t="dash"><span class="tag">Executive reporting</span><h3>Loan Portfolio Shiny Dashboard</h3><p>Production R Shiny dashboard with role-based login, 25+ filters, near real-time delinquency and charge-off views by credit score, and hourly monitoring with email alerts. It informed who qualifies for loans.</p><div class="chips"><span class="chip">R Shiny</span><span class="chip">shinytest2</span><span class="chip">cron</span></div></div>
       <div class="card" data-t="dash"><span class="tag">Investor reporting</span><h3>Investor Tableau Dashboard</h3><p>Charge-off percentage, covenant compliance under the lending rules, and the interest rate paid on borrowed funds, in one view for investors.</p><div class="chips"><span class="chip">Tableau</span><span class="chip">SQL</span></div></div>
